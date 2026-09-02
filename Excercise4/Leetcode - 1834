@@ -1,0 +1,101 @@
+
+typedef struct {
+    int id;
+    int enqueueTime;
+    int processingTime;
+} Task;
+
+typedef struct {
+    int id;
+    int processingTime;
+} HeapNode;
+
+// Comparator to sort tasks by enqueue time
+int compareTasks(const void *a, const void *b) {
+    Task *t1 = (Task *)a;
+    Task *t2 = (Task *)b;
+    if (t1->enqueueTime != t2->enqueueTime)
+        return t1->enqueueTime - t2->enqueueTime;
+    return t1->id - t2->id;
+}
+
+// Min-Heap operations
+void swap(HeapNode *a, HeapNode *b) {
+    HeapNode temp = *a;
+    *a = *b;
+    *b = temp;
+}
+
+void push(HeapNode *heap, int *size, HeapNode node) {
+    heap[*size] = node;
+    int i = (*size)++;
+    while (i > 0) {
+        int p = (i - 1) / 2;
+        if (heap[i].processingTime < heap[p].processingTime || 
+           (heap[i].processingTime == heap[p].processingTime && heap[i].id < heap[p].id)) {
+            swap(&heap[i], &heap[p]);
+            i = p;
+        } else {
+            break;
+        }
+    }
+}
+
+HeapNode pop(HeapNode *heap, int *size) {
+    HeapNode top = heap[0];
+    heap[0] = heap[--(*size)];
+    int i = 0;
+    while (2 * i + 1 < *size) {
+        int left = 2 * i + 1;
+        int right = 2 * i + 2;
+        int smallest = left;
+        if (right < *size && (heap[right].processingTime < heap[left].processingTime || 
+           (heap[right].processingTime == heap[left].processingTime && heap[right].id < heap[left].id))) {
+            smallest = right;
+        }
+        if (heap[smallest].processingTime < heap[i].processingTime || 
+           (heap[smallest].processingTime == heap[i].processingTime && heap[smallest].id < heap[i].id)) {
+            swap(&heap[i], &heap[smallest]);
+            i = smallest;
+        } else {
+            break;
+        }
+    }
+    return top;
+}
+
+int* getOrder(int** tasks, int tasksSize, int* tasksColSize, int* returnSize) {
+    Task *t = (Task *)malloc(tasksSize * sizeof(Task));
+    for (int i = 0; i < tasksSize; i++) {
+        t[i].id = i;
+        t[i].enqueueTime = tasks[i][0];
+        t[i].processingTime = tasks[i][1];
+    }
+    qsort(t, tasksSize, sizeof(Task), compareTasks);
+
+    HeapNode *heap = (HeapNode *)malloc(tasksSize * sizeof(HeapNode));
+    int heapSize = 0;
+    int *result = (int *)malloc(tasksSize * sizeof(int));
+    *returnSize = 0;
+
+    long long currTime = 0;
+    int taskIdx = 0;
+
+    while (taskIdx < tasksSize || heapSize > 0) {
+        if (heapSize == 0 && currTime < t[taskIdx].enqueueTime) {
+            currTime = t[taskIdx].enqueueTime;
+        }
+        while (taskIdx < tasksSize && t[taskIdx].enqueueTime <= currTime) {
+            HeapNode node = {t[taskIdx].id, t[taskIdx].processingTime};
+            push(heap, &heapSize, node);
+            taskIdx++;
+        }
+        HeapNode nextTask = pop(heap, &heapSize);
+        result[(*returnSize)++] = nextTask.id;
+        currTime += nextTask.processingTime;
+    }
+
+    free(t);
+    free(heap);
+    return result;
+}
