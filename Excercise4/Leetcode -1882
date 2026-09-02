@@ -1,0 +1,97 @@
+
+typedef struct {
+    int id;
+    int weight;
+} Server;
+
+typedef struct {
+    int id;
+    int weight;
+    long long freeTime;
+} BusyServer;
+
+// Free Heap Comparators & Operations
+void swapFree(Server *a, Server *b) { Server t = *a; *a = *b; *b = t; }
+void pushFree(Server *h, int *sz, Server n) {
+    h[*sz] = n; int i = (*sz)++;
+    while (i > 0) {
+        int p = (i - 1) / 2;
+        if (h[i].weight < h[p].weight || (h[i].weight == h[p].weight && h[i].id < h[p].id)) {
+            swapFree(&h[i], &h[p]); i = p;
+        } else break;
+    }
+}
+Server popFree(Server *h, int *sz) {
+    Server top = h[0]; h[0] = h[--(*sz)]; int i = 0;
+    while (2 * i + 1 < *sz) {
+        int l = 2 * i + 1, r = 2 * i + 2, s = l;
+        if (r < *sz && (h[r].weight < h[l].weight || (h[r].weight == h[l].weight && h[r].id < h[l].id))) s = r;
+        if (h[s].weight < h[i].weight || (h[s].weight == h[i].weight && h[s].id < h[i].id)) {
+            swapFree(&h[i], &h[s]); i = s;
+        } else break;
+    }
+    return top;
+}
+
+// Busy Heap Operations
+void swapBusy(BusyServer *a, BusyServer *b) { BusyServer t = *a; *a = *b; *b = t; }
+void pushBusy(BusyServer *h, int *sz, BusyServer n) {
+    h[*sz] = n; int i = (*sz)++;
+    while (i > 0) {
+        int p = (i - 1) / 2;
+        if (h[i].freeTime < h[p].freeTime || 
+           (h[i].freeTime == h[p].freeTime && h[i].weight < h[p].weight) ||
+           (h[i].freeTime == h[p].freeTime && h[i].weight == h[p].weight && h[i].id < h[p].id)) {
+            swapBusy(&h[i], &h[p]); i = p;
+        } else break;
+    }
+}
+BusyServer popBusy(BusyServer *h, int *sz) {
+    BusyServer top = h[0]; h[0] = h[--(*sz)]; int i = 0;
+    while (2 * i + 1 < *sz) {
+        int l = 2 * i + 1, r = 2 * i + 2, s = l;
+        if (r < *sz && (h[r].freeTime < h[l].freeTime || 
+           (h[r].freeTime == h[l].freeTime && h[r].weight < h[l].weight) ||
+           (h[r].freeTime == h[l].freeTime && h[r].weight == h[l].weight && h[r].id < h[l].id))) s = r;
+        if (h[s].freeTime < h[i].freeTime || 
+           (h[s].freeTime == h[i].freeTime && h[s].weight < h[i].weight) ||
+           (h[s].freeTime == h[i].freeTime && h[s].weight == h[i].weight && h[s].id < h[i].id)) {
+            swapBusy(&h[i], &h[s]); i = s;
+        } else break;
+    }
+    return top;
+}
+
+int* assignTasks(int* servers, int serversSize, int* tasks, int tasksSize, int* returnSize) {
+    Server *freeHeap = (Server *)malloc(serversSize * sizeof(Server));
+    BusyServer *busyHeap = (BusyServer *)malloc(serversSize * sizeof(BusyServer));
+    int freeSize = 0, busySize = 0;
+
+    for (int i = 0; i < serversSize; i++) {
+        Server s = {i, servers[i]};
+        pushFree(freeHeap, &freeSize, s);
+    }
+
+    int *ans = (int *)malloc(tasksSize * sizeof(int));
+    *returnSize = tasksSize;
+    long long currTime = 0;
+
+    for (int i = 0; i < tasksSize; i++) {
+        if (currTime < i) currTime = i;
+        if (freeSize == 0 && busyHeap[0].freeTime > currTime) {
+            currTime = busyHeap[0].freeTime;
+        }
+        while (busySize > 0 && busyHeap[0].freeTime <= currTime) {
+            BusyServer bs = popBusy(busyHeap, &busySize);
+            Server s = {bs.id, bs.weight};
+            pushFree(freeHeap, &freeSize, s);
+        }
+        Server s = popFree(freeHeap, &freeSize);
+        ans[i] = s.id;
+        BusyServer bs = {s.id, s.weight, currTime + tasks[i]};
+        pushBusy(busyHeap, &busySize, bs);
+    }
+
+    free(freeHeap); free(busyHeap);
+    return ans;
+}
