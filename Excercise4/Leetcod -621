@@ -1,0 +1,35 @@
+#include <stdio.h>
+#include <string.h>
+
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
+
+int leastInterval(char* tasks, int tasksSize, int n) {
+    int freq[26] = {0};
+    int maxFreq = 0;
+    int maxFreqCount = 0;
+
+    // Count frequencies of each task character
+    for (int i = 0; i < tasksSize; i++) {
+        freq[tasks[i] - 'A']++;
+        if (freq[tasks[i] - 'A'] > maxFreq) {
+            maxFreq = freq[tasks[i] - 'A'];
+        }
+    }
+
+    // Count how many tasks share the maximum frequency
+    for (int i = 0; i < 26; i++) {
+        if (freq[i] == maxFreq) {
+            maxFreqCount++;
+        }
+    }
+
+    // Calculate chunks created by the most frequent item
+    int partCount = maxFreq - 1;
+    int partLength = n - (maxFreqCount - 1);
+    int emptySlots = partCount * partLength;
+    int availableTasks = tasksSize - (maxFreq * maxFreqCount);
+    int idles = MAX(0, emptySlots - availableTasks);
+
+    // Answer is total tasks length + any leftover required idles
+    return tasksSize + idles;
+}
